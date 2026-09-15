@@ -88,3 +88,26 @@ h2 { margin-bottom: 0; font-size: 22px; letter-spacing: -.03em; }
   .item-meta { grid-template-columns: 1fr; }
   .item-note { grid-column: auto; }
 }
+
+/* V2 추가 스타일: 기존 styles.css 맨 아래에 추가 */
+.main-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 14px; padding:4px; background:#e5e8e2; border-radius:15px; }
+.nav-tab { border:0; border-radius:11px; padding:10px; background:transparent; color:var(--muted); font-weight:800; }
+.nav-tab.active { background:var(--surface); color:var(--ink); box-shadow:0 2px 10px rgba(28,35,29,.07); }
+.delivery-meta { font-weight:700; color:#667369; }
+.date-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.log-heading { margin:6px 2px 14px; }
+.log-heading h2 { margin:0; }
+.log-search { margin-bottom:14px; }
+.log-list { display:grid; gap:8px; }
+.log-day { padding:12px 3px 3px; font-size:13px; font-weight:850; color:var(--muted); }
+.log-card { display:flex; gap:12px; padding:14px; border:1px solid var(--line); border-radius:17px; background:var(--surface); box-shadow:0 4px 18px rgba(28,35,29,.04); }
+.log-icon { width:34px; height:34px; flex:0 0 34px; display:grid; place-items:center; border-radius:11px; background:#eef1ed; }
+.log-body { min-width:0; flex:1; }
+.log-title { display:flex; align-items:center; gap:8px; }
+.log-title strong { font-size:15px; }
+.log-badge { font-size:10px; font-weight:850; padding:4px 7px; border-radius:999px; background:var(--brand-2); color:var(--brand); }
+.log-delete .log-badge { background:#fff1ef; color:#a93228; }
+.log-update .log-badge { background:#fff6d8; color:#7b6517; }
+.log-detail { margin-top:4px; font-size:13px; color:#555d55; }
+.log-sub { margin-top:5px; font-size:11px; color:var(--muted); word-break:break-all; }
+@media (max-width:420px) { .date-grid { grid-template-columns:1fr 1fr; } }
