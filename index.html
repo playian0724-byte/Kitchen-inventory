@@ -15,52 +15,45 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <p class="eyebrow">KITCHEN STOCK</p>
-        <h1>취사장 재고관리</h1>
-      </div>
+      <div><p class="eyebrow">KITCHEN STOCK</p><h1>취사장 재고관리</h1></div>
       <button id="authButton" class="ghost-btn" type="button">로그인</button>
     </header>
+
+    <nav class="main-tabs">
+      <button class="nav-tab active" data-page="inventory" type="button">재고</button>
+      <button class="nav-tab" data-page="logs" type="button">입고 기록</button>
+    </nav>
 
     <main>
       <section id="modeBanner" class="mode-banner hidden"></section>
 
-      <section id="summary" class="summary-grid" aria-label="재고 요약">
-        <button class="summary-card" data-filter="all" type="button">
-          <span>전체</span><strong id="countAll">0</strong>
-        </button>
-        <button class="summary-card warning" data-filter="30" type="button">
-          <span>D-30</span><strong id="count30">0</strong>
-        </button>
-        <button class="summary-card urgent" data-filter="7" type="button">
-          <span>D-7</span><strong id="count7">0</strong>
-        </button>
-        <button class="summary-card expired" data-filter="expired" type="button">
-          <span>만료</span><strong id="countExpired">0</strong>
-        </button>
-      </section>
+      <div id="inventoryPage">
+        <section class="summary-grid" aria-label="재고 요약">
+          <button class="summary-card" data-filter="all" type="button"><span>전체</span><strong id="countAll">0</strong></button>
+          <button class="summary-card warning" data-filter="30" type="button"><span>D-30</span><strong id="count30">0</strong></button>
+          <button class="summary-card urgent" data-filter="7" type="button"><span>D-7</span><strong id="count7">0</strong></button>
+          <button class="summary-card expired" data-filter="expired" type="button"><span>만료</span><strong id="countExpired">0</strong></button>
+        </section>
+        <section class="toolbar">
+          <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="품목, 위치 검색" autocomplete="off" /></label>
+          <button id="notificationButton" class="icon-btn" type="button" title="알림 켜기">🔔</button>
+        </section>
+        <section class="filter-row">
+          <button class="filter-chip active" data-filter="all" type="button">전체</button>
+          <button class="filter-chip" data-filter="7" type="button">7일 이내</button>
+          <button class="filter-chip" data-filter="30" type="button">30일 이내</button>
+          <button class="filter-chip" data-filter="expired" type="button">만료</button>
+        </section>
+        <section id="inventoryList" class="inventory-list" aria-live="polite"></section>
+        <section id="emptyState" class="empty-state hidden"><div class="empty-icon">📦</div><h2>표시할 재고가 없습니다</h2><p>오른쪽 아래 + 버튼으로 첫 재고를 등록하세요.</p></section>
+      </div>
 
-      <section class="toolbar">
-        <label class="search-box">
-          <span>⌕</span>
-          <input id="searchInput" type="search" placeholder="품목, 위치 검색" autocomplete="off" />
-        </label>
-        <button id="notificationButton" class="icon-btn" type="button" title="알림 켜기">🔔</button>
-      </section>
-
-      <section class="filter-row" aria-label="필터">
-        <button class="filter-chip active" data-filter="all" type="button">전체</button>
-        <button class="filter-chip" data-filter="7" type="button">7일 이내</button>
-        <button class="filter-chip" data-filter="30" type="button">30일 이내</button>
-        <button class="filter-chip" data-filter="expired" type="button">만료</button>
-      </section>
-
-      <section id="inventoryList" class="inventory-list" aria-live="polite"></section>
-      <section id="emptyState" class="empty-state hidden">
-        <div class="empty-icon">📦</div>
-        <h2>표시할 재고가 없습니다</h2>
-        <p>오른쪽 아래 + 버튼으로 첫 재고를 등록하세요.</p>
-      </section>
+      <div id="logsPage" class="hidden">
+        <section class="log-heading"><p class="eyebrow">HISTORY</p><h2>입고 · 변경 기록</h2></section>
+        <label class="search-box log-search"><span>⌕</span><input id="logSearchInput" type="search" placeholder="품목, 위치, 사용자 검색" autocomplete="off" /></label>
+        <section id="logList" class="log-list"></section>
+        <section id="logEmpty" class="empty-state hidden"><div class="empty-icon">🧾</div><h2>아직 기록이 없습니다</h2><p>재고를 추가·수정·삭제하면 기록됩니다.</p></section>
+      </div>
     </main>
 
     <button id="addButton" class="fab" type="button" aria-label="재고 추가">＋</button>
@@ -69,51 +62,33 @@
   <dialog id="itemDialog" class="sheet-dialog">
     <form id="itemForm" method="dialog" class="sheet">
       <div class="sheet-handle"></div>
-      <div class="sheet-header">
-        <div>
-          <p class="eyebrow">INVENTORY ITEM</p>
-          <h2 id="dialogTitle">재고 추가</h2>
-        </div>
-        <button id="closeDialog" class="icon-btn" type="button" aria-label="닫기">✕</button>
-      </div>
-
+      <div class="sheet-header"><div><p class="eyebrow">INVENTORY ITEM</p><h2 id="dialogTitle">재고 추가</h2></div><button id="closeDialog" class="icon-btn" type="button">✕</button></div>
       <input id="itemId" type="hidden" />
       <label>품목명<input id="itemName" required maxlength="80" placeholder="예: 냉동 닭정육" /></label>
       <label>수량<input id="quantity" required maxlength="40" placeholder="예: 12봉 / 3박스 / 5kg" /></label>
       <label>위치<input id="location" required maxlength="80" placeholder="예: 냉동고 2번 / 건식창고 1단" /></label>
-      <label>유통기한<input id="expiryDate" required type="date" /></label>
-      <label>메모<textarea id="note" rows="3" maxlength="300" placeholder="선입선출, 개봉 여부 등"></textarea></label>
-
-      <div class="sheet-actions">
-        <button id="deleteButton" class="danger-btn hidden" type="button">삭제</button>
-        <button class="primary-btn" type="submit">저장</button>
+      <div class="date-grid">
+        <label>납입일<input id="deliveryDate" required type="date" /></label>
+        <label>유통기한<input id="expiryDate" required type="date" /></label>
       </div>
+      <label>메모<textarea id="note" rows="3" maxlength="300" placeholder="선입선출, 개봉 여부 등"></textarea></label>
+      <div class="sheet-actions"><button id="deleteButton" class="danger-btn hidden" type="button">삭제</button><button class="primary-btn" type="submit">저장</button></div>
     </form>
   </dialog>
 
   <dialog id="authDialog" class="sheet-dialog">
     <form id="authForm" class="sheet" method="dialog">
       <div class="sheet-handle"></div>
-      <div class="sheet-header">
-        <div>
-          <p class="eyebrow">TEAM ACCESS</p>
-          <h2>팀 로그인</h2>
-        </div>
-        <button id="closeAuthDialog" class="icon-btn" type="button">✕</button>
-      </div>
-      <p class="helper">Supabase를 연결하면 로그인한 팀원끼리 같은 재고를 공유합니다.</p>
-      <label>이메일<input id="email" type="email" autocomplete="email" placeholder="cook01@example.com" /></label>
-      <label>비밀번호<input id="password" type="password" minlength="6" autocomplete="current-password" placeholder="6자 이상" /></label>
-      <div class="auth-actions">
-        <button id="signUpButton" class="secondary-btn" type="button">계정 만들기</button>
-        <button id="signInButton" class="primary-btn" type="button">로그인</button>
-      </div>
+      <div class="sheet-header"><div><p class="eyebrow">TEAM ACCESS</p><h2>팀 로그인</h2></div><button id="closeAuthDialog" class="icon-btn" type="button">✕</button></div>
+      <p class="helper">로그인한 팀원끼리 같은 재고와 기록을 공유합니다.</p>
+      <label>이메일<input id="email" type="email" autocomplete="email" /></label>
+      <label>비밀번호<input id="password" type="password" minlength="6" autocomplete="current-password" /></label>
+      <div class="auth-actions"><button id="signUpButton" class="secondary-btn" type="button">계정 만들기</button><button id="signInButton" class="primary-btn" type="button">로그인</button></div>
       <p id="authMessage" class="helper"></p>
     </form>
   </dialog>
 
   <div id="toast" class="toast hidden" role="status"></div>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
