@@ -1,0 +1,12 @@
+{
+  "name": "취사장 재고관리",
+  "short_name": "취사장 재고",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f4ef",
+  "theme_color": "#263c2d",
+  "description": "10명 안팎 팀이 함께 쓰는 취사장 재고 및 유통기한 관리 웹앱",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
