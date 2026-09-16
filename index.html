@@ -11,6 +11,23 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    .autocomplete-field{position:relative}
+    .autocomplete-list{
+      position:absolute; left:0; right:0; top:100%; z-index:1000;
+      margin-top:6px; max-height:220px; overflow-y:auto;
+      background:#fff; border:1px solid rgba(20,45,31,.14);
+      border-radius:16px; box-shadow:0 12px 30px rgba(20,45,31,.14);
+      padding:6px;
+    }
+    .autocomplete-list.hidden{display:none}
+    .autocomplete-option{
+      width:100%; display:block; border:0; background:#fff; text-align:left;
+      padding:12px 14px; border-radius:11px; font:inherit; color:inherit;
+    }
+    .autocomplete-option:active,.autocomplete-option:hover{background:#f1f4ef}
+  </style>
 </head>
 <body>
   <div class="app-shell">
@@ -64,11 +81,9 @@
       <div class="sheet-handle"></div>
       <div class="sheet-header"><div><p class="eyebrow">INVENTORY ITEM</p><h2 id="dialogTitle">재고 추가</h2></div><button id="closeDialog" class="icon-btn" type="button">✕</button></div>
       <input id="itemId" type="hidden" />
-      <label>품목명<input id="itemName" required maxlength="80" placeholder="예: 냉동 닭정육" list="itemNameSuggestions" autocomplete="off" /></label>
-      <datalist id="itemNameSuggestions"></datalist>
+      <label class="autocomplete-field">품목명<input id="itemName" required maxlength="80" placeholder="예: 냉동 닭정육" autocomplete="off" /><div id="itemNameSuggestions" class="autocomplete-list hidden"></div></label>
       <label>수량<input id="quantity" required maxlength="40" placeholder="예: 12봉 / 3박스 / 5kg" /></label>
-      <label>위치<input id="location" required maxlength="80" placeholder="예: 냉동고 2번 / 건식창고 1단" list="locationSuggestions" autocomplete="off" /></label>
-      <datalist id="locationSuggestions"></datalist>
+      <label class="autocomplete-field">위치<input id="location" required maxlength="80" placeholder="예: 냉동고 2번 / 건식창고 1단" autocomplete="off" /><div id="locationSuggestions" class="autocomplete-list hidden"></div></label>
       <div class="date-grid">
         <label>납입일<input id="deliveryDate" required type="date" /></label>
         <label>유통기한<input id="expiryDate" required type="date" /></label>
