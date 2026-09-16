@@ -27,6 +27,11 @@
       padding:12px 14px; border-radius:11px; font:inherit; color:inherit;
     }
     .autocomplete-option:active,.autocomplete-option:hover{background:#f1f4ef}
+    .quantity-control{display:grid;grid-template-columns:48px minmax(72px,1fr) 48px 88px;gap:8px;align-items:center}
+    .quantity-control input,.quantity-control select{margin:0;min-width:0}
+    .quantity-step{height:48px;border:1px solid rgba(20,45,31,.14);border-radius:14px;background:#f5f7f3;font-size:24px;line-height:1;color:inherit}
+    .quantity-step:active{transform:scale(.96)}
+    .quantity-unit{height:48px;border:1px solid rgba(20,45,31,.14);border-radius:14px;background:#fff;padding:0 10px;font:inherit;color:inherit}
   </style>
 </head>
 <body>
@@ -82,7 +87,17 @@
       <div class="sheet-header"><div><p class="eyebrow">INVENTORY ITEM</p><h2 id="dialogTitle">재고 추가</h2></div><button id="closeDialog" class="icon-btn" type="button">✕</button></div>
       <input id="itemId" type="hidden" />
       <label class="autocomplete-field">품목명<input id="itemName" required maxlength="80" placeholder="예: 냉동 닭정육" autocomplete="off" /><div id="itemNameSuggestions" class="autocomplete-list hidden"></div></label>
-      <label>수량<input id="quantity" required maxlength="40" placeholder="예: 12봉 / 3박스 / 5kg" /></label>
+      <label>수량
+        <div class="quantity-control">
+          <button id="quantityMinus" class="quantity-step" type="button" aria-label="수량 1 감소">−</button>
+          <input id="quantity" required type="number" inputmode="numeric" min="0" step="1" value="1" aria-label="수량" />
+          <button id="quantityPlus" class="quantity-step" type="button" aria-label="수량 1 증가">＋</button>
+          <select id="quantityUnit" class="quantity-unit" aria-label="단위">
+            <option value="개">개</option>
+            <option value="박스">박스</option>
+          </select>
+        </div>
+      </label>
       <label class="autocomplete-field">위치<input id="location" required maxlength="80" placeholder="예: 냉동고 2번 / 건식창고 1단" autocomplete="off" /><div id="locationSuggestions" class="autocomplete-list hidden"></div></label>
       <div class="date-grid">
         <label>납입일<input id="deliveryDate" required type="date" /></label>
