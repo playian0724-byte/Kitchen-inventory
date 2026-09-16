@@ -12,6 +12,21 @@
   function dLabel(i){ const d=daysLeft(i.expiry_date); return d<0?`D+${Math.abs(d)}`:d===0?'D-DAY':`D-${d}`; }
   function escapeHtml(v=''){ return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
   function shortDate(s){ return s ? s.slice(5).replace('-','.') : '-'; }
+  function parseQuantity(raw=''){
+    const s=String(raw||'').trim();
+    const m=s.match(/^(\d+)\s*(ê°|ë°ì¤)$/);
+    if(m)return {count:Number(m[1]),unit:m[2]};
+    const n=parseInt(s,10);
+    return {count:Number.isFinite(n)?n:1,unit:s.includes('ë°ì¤')?'ë°ì¤':'ê°'};
+  }
+  function setQuantity(count,unit){
+    $('quantity').value=Math.max(0,Number.isFinite(Number(count))?Math.floor(Number(count)):1);
+    $('quantityUnit').value=unit==='ë°ì¤'?'ë°ì¤':'ê°';
+  }
+  function stepQuantity(delta){
+    const current=Math.max(0,parseInt($('quantity').value,10)||0);
+    $('quantity').value=Math.max(0,current+delta);
+  }
   function showToast(m){ const t=$('toast'); t.textContent=m; t.classList.remove('hidden'); clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>t.classList.add('hidden'),2600); }
 
   function normalizeMemberName(v=''){ return String(v).trim().replace(/\s+/g,' '); }
@@ -160,7 +175,7 @@
     $('dialogTitle').textContent='\uC7AC\uACE0 \uCD94\uAC00';
     $('itemId').value='';
     $('itemName').value='';
-    $('quantity').value='';
+    setQuantity(1,'ê°');
     $('location').value='';
     $('deliveryDate').value=todayKST();
     $('expiryDate').value=addDays(30);
@@ -175,7 +190,8 @@
     $('dialogTitle').textContent='\uC7AC\uACE0 \uC218\uC815';
     $('itemId').value=i.id;
     $('itemName').value=i.item_name;
-    $('quantity').value=i.quantity;
+    const qty=parseQuantity(i.quantity);
+    setQuantity(qty.count,qty.unit);
     $('location').value=i.location;
     $('deliveryDate').value=i.delivery_date||todayKST();
     $('expiryDate').value=i.expiry_date;
@@ -196,7 +212,7 @@
       delivery_date:item.delivery_date,
       note:item.note||'',
       user_id:u.id,
-      user_email:u.email||''
+      user_email:u.user_metadata?.display_name || memberNameFromEmail(u.email||'') || u.email || ''
     });
     if(error)throw error;
   }
@@ -284,6 +300,8 @@
   function bindEvents(){
     bindAutocomplete('itemName','itemNameSuggestions','item_name');
     bindAutocomplete('location','locationSuggestions','location');
+    $('quantityMinus').addEventListener('click',()=>stepQuantity(-1));
+    $('quantityPlus').addEventListener('click',()=>stepQuantity(1));
     $('addButton').addEventListener('click',openAdd);
     $('closeDialog').addEventListener('click',()=>$('itemDialog').close());
     $('closeAuthDialog').addEventListener('click',()=>$('authDialog').close());
@@ -297,7 +315,7 @@
       const p={
         id:$('itemId').value||undefined,
         item_name:$('itemName').value.trim(),
-        quantity:$('quantity').value.trim(),
+        quantity:`${Math.max(0,parseInt($('quantity').value,10)||0)}${$('quantityUnit').value}`,
         location:$('location').value.trim(),
         delivery_date:$('deliveryDate').value,
         expiry_date:$('expiryDate').value,
