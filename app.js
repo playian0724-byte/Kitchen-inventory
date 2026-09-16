@@ -206,17 +206,30 @@
   async function signIn(){
     const name=normalizeMemberName($('memberName').value);
     const code=$('inviteCode').value;
-    if(!name || code.length<6){
-      $('authMessage').textContent='ì´ë¦ê³¼ 6ì ì´ìì ì´ëì½ëë¥¼ ìë ¥íì¸ì.';
+    if(!name || !code){
+      $('authMessage').textContent='ì´ë¦ê³¼ ì´ëì½ëë¥¼ ìë ¥íì¸ì.';
       return;
     }
+
     const email=memberEmail(name);
     $('authMessage').textContent='ë¡ê·¸ì¸ ì¤...';
 
+    // Existing member: same shared code signs in.
     const signed=await client.auth.signInWithPassword({email,password:code});
     if(!signed.error){
       $('authMessage').textContent=`${name}ë, ë¡ê·¸ì¸íìµëë¤.`;
       setTimeout(()=>$('authDialog').close(),250);
+      return;
+    }
+
+    // New member: server verifies the kitchen-wide invite code first.
+    const verified=await client.rpc('verify_kitchen_invite',{input_code:code});
+    if(verified.error){
+      $('authMessage').textContent='ì´ëì½ë íì¸ ì¤ ì¤ë¥ê° ë°ìíìµëë¤.';
+      return;
+    }
+    if(verified.data !== true){
+      $('authMessage').textContent='ì´ëì½ëê° ì¬ë°ë¥´ì§ ììµëë¤.';
       return;
     }
 
@@ -226,14 +239,14 @@
       options:{data:{display_name:name}}
     });
     if(created.error){
-      $('authMessage').textContent='ë¡ê·¸ì¸ì ì¤í¨íìµëë¤. ì´ë¦ê³¼ ì´ëì½ëë¥¼ íì¸íì¸ì.';
+      $('authMessage').textContent='ê³ì ì ë§ë¤ì§ ëª»íìµëë¤. ê°ì ì´ë¦ì´ ì´ë¯¸ ìë¤ë©´ ì´ëì½ëë¥¼ ë¤ì íì¸íì¸ì.';
       return;
     }
     if(created.data.session){
-      $('authMessage').textContent=`${name}ë, ë¡ê·¸ì¸íìµëë¤.`;
+      $('authMessage').textContent=`${name}ë, ì²ì ë¡ê·¸ì¸íìµëë¤.`;
       setTimeout(()=>$('authDialog').close(),250);
     }else{
-      $('authMessage').textContent='ê³ì ì ìì±ëì§ë§ ì¸ìì´ ììµëë¤. Supabaseì Confirm email ì¤ì ì íì¸íì¸ì.';
+      $('authMessage').textContent='ê³ì ì ìì±ëì§ë§ ì¸ìì´ ììµëë¤. Confirm email ì¤ì ì íì¸íì¸ì.';
     }
   }
 
