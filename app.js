@@ -14,6 +14,33 @@
   function shortDate(s){ return s ? s.slice(5).replace('-','.') : '-'; }
   function showToast(m){ const t=$('toast'); t.textContent=m; t.classList.remove('hidden'); clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>t.classList.add('hidden'),2600); }
 
+  function normalizeMemberName(v=''){ return String(v).trim().replace(/\s+/g,' '); }
+  function memberEmail(name){
+    const bytes=new TextEncoder().encode(normalizeMemberName(name));
+    let binary=''; bytes.forEach(b=>binary+=String.fromCharCode(b));
+    const token=btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    return `member-${token}@kitchen-stock.local`;
+  }
+  function memberNameFromEmail(email=''){
+    const m=String(email).match(/^member-([^@]+)@kitchen-stock\.local$/);
+    if(!m)return email;
+    try{
+      let token=m[1].replace(/-/g,'+').replace(/_/g,'/');
+      while(token.length%4)token+='=';
+      const binary=atob(token);
+      const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    }catch(_){ return email; }
+  }
+  function uniqueSuggestions(field){
+    const vals=[...state.items,...state.logs].map(x=>String(x[field]||'').trim()).filter(Boolean);
+    return [...new Set(vals)].sort((a,b)=>a.localeCompare(b,'ko'));
+  }
+  function renderSuggestions(){
+    $('itemNameSuggestions').innerHTML=uniqueSuggestions('item_name').map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
+    $('locationSuggestions').innerHTML=uniqueSuggestions('location').map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
+  }
+
   async function loadCloud(){
     if(!state.session){ state.items=[]; state.logs=[]; render(); return; }
     const [itemsRes,logsRes]=await Promise.all([
@@ -24,6 +51,7 @@
     if(logsRes.error) return showToast(`\uAE30\uB85D \uBD88\uB7EC\uC624\uAE30 \uC2E4\uD328: ${logsRes.error.message}`);
     state.items=itemsRes.data||[];
     state.logs=logsRes.data||[];
+    renderSuggestions();
     render();
   }
 
@@ -75,7 +103,7 @@
 
   function renderLogs(){
     const q=state.logSearch.trim().toLowerCase();
-    const logs=state.logs.filter(l=>!q||`${l.item_name} ${l.location||''} ${l.quantity||''} ${l.user_email||''}`.toLowerCase().includes(q));
+    const logs=state.logs.filter(l=>!q||`${l.item_name} ${l.location||''} ${l.quantity||''} ${memberNameFromEmail(l.user_email||'')}`.toLowerCase().includes(q));
     const labels={add:'\uC785\uACE0',update:'\uC218\uC815',delete:'\uC0AD\uC81C'};
     const icons={add:'\uD83D\uDCE6',update:'\u270F\uFE0F',delete:'\uD83D\uDDD1\uFE0F'};
     let lastDay='';
@@ -170,23 +198,43 @@
   function openAuth(){
     if(!cloudReady)return showToast('Supabase \uC5F0\uACB0 \uC124\uC815\uC744 \uD655\uC778\uD558\uC138\uC694.');
     $('authMessage').textContent='';
+    $('inviteCode').value='';
     $('authDialog').showModal();
+    setTimeout(()=>$('memberName').focus(),50);
   }
 
   async function signIn(){
-    const email=$('email').value.trim(), password=$('password').value;
-    if(!email||!password)return $('authMessage').textContent='\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD558\uC138\uC694.';
-    $('authMessage').textContent='\uB85C\uADF8\uC778 \uC911...';
-    const {error}=await client.auth.signInWithPassword({email,password});
-    $('authMessage').textContent=error?error.message:'\uB85C\uADF8\uC778\uD588\uC2B5\uB2C8\uB2E4.';
-    if(!error)setTimeout(()=>$('authDialog').close(),300);
-  }
+    const name=normalizeMemberName($('memberName').value);
+    const code=$('inviteCode').value;
+    if(!name || code.length<6){
+      $('authMessage').textContent='ì´ë¦ê³¼ 6ì ì´ìì ì´ëì½ëë¥¼ ìë ¥íì¸ì.';
+      return;
+    }
+    const email=memberEmail(name);
+    $('authMessage').textContent='ë¡ê·¸ì¸ ì¤...';
 
-  async function signUp(){
-    const email=$('email').value.trim(), password=$('password').value;
-    if(!email||password.length<6)return $('authMessage').textContent='\uC774\uBA54\uC77C\uACFC 6\uC790 \uC774\uC0C1 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD558\uC138\uC694.';
-    const {error}=await client.auth.signUp({email,password});
-    $('authMessage').textContent=error?error.message:'\uACC4\uC815\uC744 \uB9CC\uB4E4\uC5C8\uC2B5\uB2C8\uB2E4.';
+    const signed=await client.auth.signInWithPassword({email,password:code});
+    if(!signed.error){
+      $('authMessage').textContent=`${name}ë, ë¡ê·¸ì¸íìµëë¤.`;
+      setTimeout(()=>$('authDialog').close(),250);
+      return;
+    }
+
+    const created=await client.auth.signUp({
+      email,
+      password:code,
+      options:{data:{display_name:name}}
+    });
+    if(created.error){
+      $('authMessage').textContent='ë¡ê·¸ì¸ì ì¤í¨íìµëë¤. ì´ë¦ê³¼ ì´ëì½ëë¥¼ íì¸íì¸ì.';
+      return;
+    }
+    if(created.data.session){
+      $('authMessage').textContent=`${name}ë, ë¡ê·¸ì¸íìµëë¤.`;
+      setTimeout(()=>$('authDialog').close(),250);
+    }else{
+      $('authMessage').textContent='ê³ì ì ìì±ëì§ë§ ì¸ìì´ ììµëë¤. Supabaseì Confirm email ì¤ì ì íì¸íì¸ì.';
+    }
   }
 
   function bindEvents(){
@@ -233,7 +281,6 @@
       }else openAuth();
     });
     $('signInButton').addEventListener('click',signIn);
-    $('signUpButton').addEventListener('click',signUp);
 
     // notificationButton is intentionally handled only by push.js.
   }
