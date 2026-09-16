@@ -36,9 +36,41 @@
     const vals=[...state.items,...state.logs].map(x=>String(x[field]||'').trim()).filter(Boolean);
     return [...new Set(vals)].sort((a,b)=>a.localeCompare(b,'ko'));
   }
-  function renderSuggestions(){
-    $('itemNameSuggestions').innerHTML=uniqueSuggestions('item_name').map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
-    $('locationSuggestions').innerHTML=uniqueSuggestions('location').map(v=>`<option value="${escapeHtml(v)}"></option>`).join('');
+  function matchingSuggestions(field, query){
+    const q=String(query||'').trim().toLocaleLowerCase('ko');
+    if(!q)return [];
+    return uniqueSuggestions(field)
+      .filter(v=>v.toLocaleLowerCase('ko').startsWith(q))
+      .slice(0,12);
+  }
+  function hideSuggestionList(listId){ $(listId).classList.add('hidden'); }
+  function updateSuggestionList(inputId,listId,field){
+    const input=$(inputId), box=$(listId);
+    const matches=matchingSuggestions(field,input.value);
+    if(!input.value.trim() || !matches.length){
+      box.innerHTML='';
+      box.classList.add('hidden');
+      return;
+    }
+    box.innerHTML=matches.map(v=>`<button type="button" class="autocomplete-option" data-value="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('');
+    box.classList.remove('hidden');
+    box.querySelectorAll('.autocomplete-option').forEach(btn=>{
+      btn.addEventListener('mousedown',e=>e.preventDefault());
+      btn.addEventListener('click',()=>{
+        input.value=btn.dataset.value;
+        box.classList.add('hidden');
+        input.focus();
+      });
+    });
+  }
+  function bindAutocomplete(inputId,listId,field){
+    const input=$(inputId);
+    input.addEventListener('input',()=>updateSuggestionList(inputId,listId,field));
+    input.addEventListener('focus',()=>{
+      if(input.value.trim())updateSuggestionList(inputId,listId,field);
+      else hideSuggestionList(listId);
+    });
+    input.addEventListener('blur',()=>setTimeout(()=>hideSuggestionList(listId),120));
   }
 
   async function loadCloud(){
@@ -51,7 +83,6 @@
     if(logsRes.error) return showToast(`\uAE30\uB85D \uBD88\uB7EC\uC624\uAE30 \uC2E4\uD328: ${logsRes.error.message}`);
     state.items=itemsRes.data||[];
     state.logs=logsRes.data||[];
-    renderSuggestions();
     render();
   }
 
@@ -251,6 +282,8 @@
   }
 
   function bindEvents(){
+    bindAutocomplete('itemName','itemNameSuggestions','item_name');
+    bindAutocomplete('location','locationSuggestions','location');
     $('addButton').addEventListener('click',openAdd);
     $('closeDialog').addEventListener('click',()=>$('itemDialog').close());
     $('closeAuthDialog').addEventListener('click',()=>$('authDialog').close());
