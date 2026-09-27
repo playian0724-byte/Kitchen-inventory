@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     // 실제 앱에서 사용하는 재고 테이블
     const { data: items, error: itemError } = await supabase
       .from('inventory_items')
-      .select('id, item_name, expiry_date');
+      .select('id, item_name, expiry_date, quantity');
 
     if (itemError) {
       console.error('❌ 재고 조회 실패:', itemError.message);
@@ -56,6 +56,8 @@ export default async function handler(req, res) {
 
     for (const item of items || []) {
       if (!item.expiry_date) continue;
+      // Keep depleted batches for purchasing history, but stop expiry reminders.
+      if (/^0\s*(개|박스)?$/.test(String(item.quantity || '').trim())) continue;
 
       const [y, m, d] = item.expiry_date.split('-').map(Number);
       const expiry = Date.UTC(y, m - 1, d);

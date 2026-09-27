@@ -1,4 +1,4 @@
-const CACHE = 'kitchen-stock-push-v3';
+const CACHE = 'kitchen-stock-push-v4';
 const ASSETS = ['./','./index.html','./styles.css','./app.js','./config.js','./push.js','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install', event => {

@@ -43,6 +43,7 @@
 
     <nav class="main-tabs">
       <button class="nav-tab active" data-page="inventory" type="button">재고</button>
+      <button class="nav-tab" data-page="purchases" type="button">구매·청구 <span id="purchaseCount">0</span></button>
       <button class="nav-tab" data-page="logs" type="button">입고 기록</button>
     </nav>
 
@@ -73,8 +74,14 @@
         <section id="emptyState" class="empty-state hidden"><div class="empty-icon">📦</div><h2>표시할 재고가 없습니다</h2><p>오른쪽 아래 + 버튼으로 첫 재고를 등록하세요.</p></section>
       </div>
 
+      <div id="purchasesPage" class="hidden">
+        <section class="log-heading"><p class="eyebrow">RESTOCK</p><h2>구매·청구 목록</h2></section>
+        <p class="helper purchase-help">같은 품목의 개 단위 재고를 합산해 2개 이하이면 표시합니다. 박스는 제외하며, 재입고 후 3개 이상이면 자동으로 빠집니다.</p>
+        <section id="purchaseList" class="inventory-list" aria-live="polite"></section>
+        <section id="purchaseEmpty" class="empty-state hidden"><div class="empty-icon">✓</div><h2>부족한 품목이 없습니다</h2><p>개 단위 재고가 2개 이하인 품목이 여기에 표시됩니다.</p></section>
+      </div>
       <div id="logsPage" class="hidden">
-        <section class="log-heading"><p class="eyebrow">HISTORY</p><h2>입고 · 변경 기록</h2></section>
+        <section class="log-heading"><p class="eyebrow">HISTORY</p><h2>입고 · 사용 · 변경 기록</h2></section>
         <label class="search-box log-search"><span>⌕</span><input id="logSearchInput" type="search" placeholder="품목, 위치, 사용자 검색" autocomplete="off" /></label>
         <section id="logList" class="log-list"></section>
         <section id="logEmpty" class="empty-state hidden"><div class="empty-icon">🧾</div><h2>아직 기록이 없습니다</h2><p>재고를 추가·수정·삭제하면 기록됩니다.</p></section>
@@ -105,6 +112,17 @@
       <div class="date-grid"><fieldset class="date-field"><legend>납입일</legend><input id="deliveryDate" type="hidden" /><div class="date-selects"><select id="deliveryDateYear" aria-label="납입일 연도" required></select><select id="deliveryDateMonth" aria-label="납입일 월" required></select><select id="deliveryDateDay" aria-label="납입일 일" required></select></div><div class="date-shortcuts"><button type="button" data-date-target="deliveryDate" data-days="0">오늘</button><button type="button" data-date-target="deliveryDate" data-days="-1">어제</button></div></fieldset><fieldset class="date-field"><legend>유통기한</legend><input id="expiryDate" type="hidden" /><div class="date-selects"><select id="expiryDateYear" aria-label="유통기한 연도" required></select><select id="expiryDateMonth" aria-label="유통기한 월" required></select><select id="expiryDateDay" aria-label="유통기한 일" required></select></div><div class="date-shortcuts"><button type="button" data-date-target="expiryDate" data-days="0">오늘</button><button type="button" data-date-target="expiryDate" data-days="7">+7일</button><button type="button" data-date-target="expiryDate" data-days="30">+30일</button><button type="button" data-date-target="expiryDate" data-days="90">+90일</button></div></fieldset></div>
       <label>메모<textarea id="note" rows="3" maxlength="300" placeholder="선입선출, 개봉 여부 등"></textarea></label>
       <div class="sheet-actions"><button id="deleteButton" class="danger-btn hidden" type="button">삭제</button><button class="primary-btn" type="submit">저장</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="useDialog" class="sheet-dialog">
+    <form id="useForm" class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header"><h2>사용 수량 입력</h2><button id="closeUseDialog" class="icon-btn" type="button" aria-label="닫기">✕</button></div>
+      <input id="useItemId" type="hidden" />
+      <p id="useSummary" class="helper"></p>
+      <label>사용할 수량<input id="useQuantity" type="number" inputmode="numeric" min="1" step="1" required value="1" /></label>
+      <button id="useSubmit" class="primary-btn" type="submit">사용 처리</button>
     </form>
   </dialog>
 

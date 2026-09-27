@@ -123,3 +123,16 @@ h2 { margin-bottom: 0; font-size: 22px; letter-spacing: -.03em; }
 .date-shortcuts { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
 .date-shortcuts button { min-height:40px; padding:6px 13px; border:1px solid var(--line); border-radius:10px; background:#eef1ed; color:var(--brand); font-size:13px; }
 .date-selects select:focus-visible, .sort-control select:focus-visible { outline:2px solid #8ca193; outline-offset:2px; }
+
+.main-tabs { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.nav-tab { padding:10px 4px; font-size:13px; }
+#purchaseCount { display:inline-block; padding:1px 5px; border-radius:8px; background:#ffe8e5; color:#a93228; font-size:11px; }
+.item-open { display:block; width:100%; border:0; padding:0; text-align:left; background:transparent; color:inherit; }
+.item-name { overflow-wrap:anywhere; }
+.low-stock-badge { display:inline-block; vertical-align:middle; padding:3px 6px; border-radius:6px; background:#ffe8e5; color:#ad3025; font-size:11px; font-weight:800; white-space:nowrap; }
+.item-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:12px; }
+.item-actions button { min-height:42px; border:1px solid var(--line); border-radius:10px; padding:6px 3px; background:rgba(255,255,255,.8); color:var(--brand); font-size:12px; font-weight:700; }
+button:disabled { opacity:.45; cursor:default; }
+.purchase-help { margin-bottom:14px; }
+.purchase-card { padding:16px; border:1px solid #e6b0a9; border-radius:18px; background:#fff; }
+.purchase-card .helper { margin:8px 0 12px; }

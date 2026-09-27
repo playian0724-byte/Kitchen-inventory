@@ -5,6 +5,9 @@
   const client = cloudReady ? window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_KEY) : null;
   const state = { items: [], logs: [], filter: 'all', sort: 'expiry', search: '', logSearch: '', session: null, page: 'inventory', channel: null };
 
+  const usingItems = new Set();
+  let savingItem = false;
+
   function addDays(days){ const d=new Date(`${todayKST()}T00:00:00Z`); d.setUTCDate(d.getUTCDate()+days); return d.toISOString().slice(0,10); }
   function todayKST(){ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
   function daysLeft(s){ if(!s)return 99999; return Math.round((Date.parse(`${s}T00:00:00Z`)-Date.parse(`${todayKST()}T00:00:00Z`))/86400000); }
@@ -19,6 +22,33 @@
     const n=parseInt(s,10);
     return {count:Number.isFinite(n)?n:1,unit:s.includes('박스')?'박스':'개'};
   }
+  function stockQuantity(raw=''){
+    // Bare numbers are legacy records saved before the unit fix.
+    const match=String(raw).trim().match(/^(\d+)\s*(개|박스)?$/);
+    if(!match || !Number.isSafeInteger(Number(match[1])))return null;
+    return {count:Number(match[1]),unit:match[2]||'개'};
+  }
+  function stockKey(name=''){ return String(name).normalize('NFC').trim().replace(/\s+/g,' ').toLocaleLowerCase('ko'); }
+  function lowStocks(){
+    const groups=new Map();
+    for(const item of state.items){
+      const qty=stockQuantity(item.quantity);
+      if(!qty || qty.unit!=='개')continue;
+      const key=stockKey(item.item_name);
+      if(!groups.has(key))groups.set(key,{key,name:item.item_name,count:0,items:[]});
+      const group=groups.get(key);group.count+=qty.count;group.items.push(item);
+    }
+    return [...groups.values()].filter(g=>g.count<=2).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  }
+  function renderPurchases(groups){
+    $('purchaseList').innerHTML=groups.map(g=>`<article class="purchase-card">
+      <div class="item-top"><div class="item-name">${escapeHtml(g.name)}</div><span class="low-stock-badge">부족 · ${g.count}개</span></div>
+      <p class="helper">${escapeHtml([...new Set(g.items.map(i=>i.location))].join(' · '))}</p>
+      <button class="secondary-btn" type="button" data-restock="${escapeHtml(g.items[0].id)}">재입고</button>
+    </article>`).join('');
+    $('purchaseEmpty').classList.toggle('hidden',groups.length!==0);
+  }
+
   function setQuantity(count,unit){
     $('quantity').value=Math.max(0,Number.isFinite(Number(count))?Math.floor(Number(count)):1);
     $('quantityUnit').value=unit==='박스'?'박스':'개';
@@ -104,10 +134,15 @@
   function render(){
     const inv=state.page==='inventory';
     $('inventoryPage').classList.toggle('hidden',!inv);
-    $('logsPage').classList.toggle('hidden',inv);
+    $('logsPage').classList.toggle('hidden',state.page!=='logs');
+    $('purchasesPage').classList.toggle('hidden',state.page!=='purchases');
     $('addButton').classList.toggle('hidden',!inv);
     document.querySelectorAll('.nav-tab').forEach(x=>x.classList.toggle('active',x.dataset.page===state.page));
-    if(!inv){ renderLogs(); return; }
+    const shortages=lowStocks();
+    const lowKeys=new Set(shortages.map(g=>g.key));
+    $('purchaseCount').textContent=shortages.length;
+    renderPurchases(shortages);
+    if(state.page==='logs')renderLogs();
 
     const byName=(a,b)=>String(a.item_name||'').localeCompare(String(b.item_name||''),'ko',{numeric:true});
     const byExpiry=(a,b)=>String(a.expiry_date||'9999-12-31').localeCompare(String(b.expiry_date||'9999-12-31'));
@@ -125,13 +160,23 @@
       return searchOk&&filterOk;
     });
 
-    $('inventoryList').innerHTML=visible.map(i=>`<button class="item-card status-${statusFor(i)}" data-id="${escapeHtml(i.id)}" type="button">
-      <div class="item-top"><div><div class="item-name">${escapeHtml(i.item_name)}</div><div class="item-qty">${escapeHtml(i.quantity)}</div></div><span class="day-badge">${dLabel(i)}</span></div>
-      <div class="item-meta"><span>\uD83D\uDCCD ${escapeHtml(i.location)}</span><span>\uD83D\uDCC5 ${escapeHtml(i.expiry_date)}</span><span class="delivery-meta">\uD83D\uDCE6 \uB0A9\uC785 ${escapeHtml(shortDate(i.delivery_date))}</span>${i.note?`<span class="item-note">\uD83D\uDCDD ${escapeHtml(i.note)}</span>`:''}</div>
-    </button>`).join('');
+    $('inventoryList').innerHTML=visible.map(i=>{
+      const qty=stockQuantity(i.quantity), busy=usingItems.has(String(i.id));
+      const shortage=qty?.unit==='개'&&lowKeys.has(stockKey(i.item_name));
+      return `<article class="item-card status-${statusFor(i)}" data-id="${escapeHtml(i.id)}">
+        <button class="item-open" data-edit="${escapeHtml(i.id)}" type="button" ${busy?'disabled':''} aria-label="${escapeHtml(i.item_name)} 수정">
+          <div class="item-top"><div><div class="item-name">${escapeHtml(i.item_name)} ${shortage?'<span class="low-stock-badge">부족</span>':''}</div><div class="item-qty">${escapeHtml(i.quantity)}</div></div><span class="day-badge">${dLabel(i)}</span></div>
+          <div class="item-meta"><span>📍 ${escapeHtml(i.location)}</span><span>📅 ${escapeHtml(i.expiry_date)}</span><span class="delivery-meta">📦 납입 ${escapeHtml(shortDate(i.delivery_date))}</span>${i.note?`<span class="item-note">📝 ${escapeHtml(i.note)}</span>`:''}</div>
+        </button>
+        <div class="item-actions">
+          <button type="button" data-use-one="${escapeHtml(i.id)}" ${!qty||qty.count<1||busy?'disabled':''}>1${qty?.unit||'개'} 사용</button>
+          <button type="button" data-use="${escapeHtml(i.id)}" ${!qty||qty.count<1||busy?'disabled':''}>수량 지정</button>
+          <button type="button" data-restock="${escapeHtml(i.id)}">재입고</button>
+        </div>
+      </article>`;
+    }).join('');
 
     $('emptyState').classList.toggle('hidden',visible.length!==0);
-    document.querySelectorAll('.item-card').forEach(el=>el.addEventListener('click',()=>openEdit(el.dataset.id)));
     document.querySelectorAll('.filter-chip').forEach(el=>el.classList.toggle('active',el.dataset.filter===state.filter));
 
     const banner=$('modeBanner');
@@ -163,8 +208,9 @@
       const header=day!==lastDay?`<div class="log-day">${escapeHtml(day)}</div>`:'';
       lastDay=day;
       return `${header}<article class="log-card log-${l.action}"><div class="log-icon">${icons[l.action]||'\u2022'}</div><div class="log-body">
-        <div class="log-title"><strong>${escapeHtml(l.item_name)}</strong><span class="log-badge">${labels[l.action]||escapeHtml(l.action)}</span></div>
+        <div class="log-title"><strong>${escapeHtml(l.item_name)}</strong><span class="log-badge">${l.action==='update'&&String(l.note||'').startsWith('[사용] ')?'사용':labels[l.action]||escapeHtml(l.action)}</span></div>
         <div class="log-detail">${escapeHtml(l.quantity||'-')} \u00B7 ${escapeHtml(l.location||'-')}</div>
+        ${l.action==='update'&&String(l.note||'').startsWith('[사용] ')?`<div class="log-detail">${escapeHtml(l.note)}</div>`:''}
         <div class="log-sub">${l.delivery_date?`\uB0A9\uC785 ${escapeHtml(l.delivery_date)} \u00B7 `:''}${escapeHtml(time)}${l.user_email?` \u00B7 ${escapeHtml(l.user_email)}`:''}</div>
       </div></article>`;
     }).join('');
@@ -202,6 +248,57 @@
     $('itemDialog').showModal();
   }
 
+  function openRestock(id){
+    if(!state.session)return openAuth();
+    const item=state.items.find(i=>String(i.id)===String(id));
+    if(!item)return;
+    openAdd();
+    $('dialogTitle').textContent='재입고 · 별도 재고 등록';
+    $('itemName').value=item.item_name;
+    $('location').value=item.location;
+    setQuantity(1,stockQuantity(item.quantity)?.unit||'개');
+  }
+  function openUse(id){
+    if(!state.session)return openAuth();
+    const item=state.items.find(i=>String(i.id)===String(id));
+    const qty=item&&stockQuantity(item.quantity);
+    if(!qty || qty.count<1)return;
+    $('useItemId').value=item.id;
+    $('useQuantity').value=1;
+    $('useQuantity').max=qty.count;
+    $('useSummary').textContent=`${item.item_name} · ${item.location} · 유통기한 ${item.expiry_date} · 남은 수량 ${qty.count}${qty.unit}`;
+    $('useDialog').showModal();
+  }
+  async function useStock(id,amount){
+    if(!state.session){openAuth();return false;}
+    id=String(id);
+    if(usingItems.has(id))return false;
+    const item=state.items.find(i=>String(i.id)===id);
+    const qty=item&&stockQuantity(item.quantity);
+    if(!qty || !Number.isSafeInteger(amount) || amount<1 || amount>qty.count){
+      showToast('남은 수량 이내의 정수를 입력하세요.');return false;
+    }
+    usingItems.add(id);render();
+    try{
+      // Compare-and-set prevents concurrent use from overwriting another member's change.
+      let query=client.from('inventory_items').update({quantity:`${qty.count-amount}${qty.unit}`,updated_by:state.session.user.id})
+        .eq('id',id).eq('quantity',item.quantity);
+      if(item.updated_at)query=query.eq('updated_at',item.updated_at);
+      const {data,error}=await query.select().maybeSingle();
+      if(error)throw error;
+      if(!data){await loadCloud();showToast('다른 사용자가 재고를 변경했습니다. 최신 수량을 확인하고 다시 처리하세요.');return false;}
+      state.items=state.items.map(i=>String(i.id)===id?data:i);
+      let logFailed=false;
+      try{
+        await writeLog('update',{...data,note:`[사용] ${amount}${qty.unit} 사용 · ${qty.count}${qty.unit} → ${qty.count-amount}${qty.unit}`},id);
+      }catch(_){logFailed=true;}
+      await loadCloud();
+      showToast(logFailed?'수량은 차감됐지만 사용 기록 저장에 실패했습니다. 다시 차감하지 마세요.':`${item.item_name} ${amount}${qty.unit} 사용 처리했습니다.`);
+      return true;
+    }catch(error){showToast(error.message||'사용 처리에 실패했습니다.');return false;}
+    finally{usingItems.delete(id);render();}
+  }
+
   async function writeLog(action,item,id){
     const u=state.session.user;
     const {error}=await client.from('inventory_logs').insert({
@@ -220,19 +317,21 @@
   }
 
   async function saveItem(payload){
+    let logFailed=false;
     const uid=state.session.user.id;
     if(payload.id){
       const id=payload.id;
       delete payload.id;
       const {error}=await client.from('inventory_items').update({...payload,updated_by:uid}).eq('id',id);
       if(error)throw error;
-      await writeLog('update',payload,id);
+      try{await writeLog('update',payload,id);}catch(_){logFailed=true;}
     } else {
       const {data,error}=await client.from('inventory_items').insert({...payload,created_by:uid,updated_by:uid}).select().single();
       if(error)throw error;
-      await writeLog('add',data,data.id);
+      try{await writeLog('add',data,data.id);}catch(_){logFailed=true;}
     }
     await loadCloud();
+    return {logFailed};
   }
 
   async function deleteItem(id){
@@ -326,6 +425,24 @@
 
   function bindEvents(){
     bindDateFields();
+    for(const list of ['inventoryList','purchaseList'])$(list).addEventListener('click',e=>{
+      const button=e.target.closest('button');
+      if(!button||button.disabled)return;
+      if(button.dataset.edit)openEdit(button.dataset.edit);
+      else if(button.dataset.restock)openRestock(button.dataset.restock);
+      else if(button.dataset.useOne)useStock(button.dataset.useOne,1);
+      else if(button.dataset.use)openUse(button.dataset.use);
+    });
+    $('closeUseDialog').addEventListener('click',()=>$('useDialog').close());
+    $('useForm').addEventListener('submit',async e=>{
+      e.preventDefault();
+      if($('useSubmit').disabled)return;
+      $('useSubmit').disabled=true;
+      $('closeUseDialog').disabled=true;
+      try{if(await useStock($('useItemId').value,Number($('useQuantity').value)))$('useDialog').close();}
+      finally{$('useSubmit').disabled=false;$('closeUseDialog').disabled=false;}
+    });
+    $('useDialog').addEventListener('cancel',e=>{if($('useSubmit').disabled)e.preventDefault();});
     try { state.sort=localStorage.getItem('inventory-sort')==='name'?'name':'expiry'; } catch(_) {}
     $('sortSelect').value=state.sort;
     $('sortSelect').addEventListener('change',e=>{
@@ -347,6 +464,9 @@
 
     $('itemForm').addEventListener('submit',async e=>{
       e.preventDefault();
+      if(savingItem)return;
+      savingItem=true;
+      const submit=$('itemForm').querySelector('[type=submit]');submit.disabled=true;
       const p={
         id:$('itemId').value||undefined,
         item_name:$('itemName').value.trim(),
@@ -357,10 +477,11 @@
         note:$('note').value.trim()
       };
       try{
-        await saveItem(p);
+        const result=await saveItem(p);
         $('itemDialog').close();
-        showToast('\uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
+        showToast(result.logFailed?'재고는 저장됐지만 기록 저장에 실패했습니다. 다시 등록하지 마세요.':'저장했습니다.');
       }catch(err){ showToast(err.message||'\uC800\uC7A5 \uC2E4\uD328'); }
+      finally{savingItem=false;submit.disabled=false;}
     });
 
     $('deleteButton').addEventListener('click',async()=>{
