@@ -70,6 +70,12 @@
         <label class="sort-control">정렬
           <select id="sortSelect"><option value="expiry">유통기한 임박순</option><option value="name">품목명순 (ㄱㄴㄷ)</option></select>
         </label>
+        <div class="view-switch" role="group" aria-label="재고 보기 방식">
+          <button type="button" data-view="large" aria-pressed="true"><span aria-hidden="true">▣</span> 큰 아이콘</button>
+          <button type="button" data-view="small" aria-pressed="false"><span aria-hidden="true">▦</span> 작은 아이콘</button>
+          <button type="button" data-view="list" aria-pressed="false"><span aria-hidden="true">☰</span> 품목 아이콘</button>
+        </div>
+        <p id="viewHint" class="helper view-hint hidden">품목을 누르면 상세 정보와 사용·재입고 버튼이 펼쳐집니다.</p>
         <section id="inventoryList" class="inventory-list" aria-live="polite"></section>
         <section id="emptyState" class="empty-state hidden"><div class="empty-icon">📦</div><h2>표시할 재고가 없습니다</h2><p>오른쪽 아래 + 버튼으로 첫 재고를 등록하세요.</p></section>
       </div>

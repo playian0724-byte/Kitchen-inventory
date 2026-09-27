@@ -3,7 +3,7 @@
   const config = window.APP_CONFIG || {};
   const cloudReady = Boolean(config.SUPABASE_URL && config.SUPABASE_KEY && window.supabase);
   const client = cloudReady ? window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_KEY) : null;
-  const state = { items: [], logs: [], filter: 'all', sort: 'expiry', search: '', logSearch: '', session: null, page: 'inventory', channel: null };
+  const state = { items: [], logs: [], filter: 'all', sort: 'expiry', view: 'large', expandedId: null, search: '', logSearch: '', session: null, page: 'inventory', channel: null };
 
   const usingItems = new Set();
   let savingItem = false;
@@ -160,14 +160,21 @@
       return searchOk&&filterOk;
     });
 
+    $('inventoryList').className=`inventory-list view-${state.view}`;
+    $('viewHint').classList.toggle('hidden',state.view==='large');
+    document.querySelectorAll('[data-view]').forEach(button=>{
+      button.setAttribute('aria-pressed',String(button.dataset.view===state.view));
+    });
     $('inventoryList').innerHTML=visible.map(i=>{
       const qty=stockQuantity(i.quantity), busy=usingItems.has(String(i.id));
       const shortage=qty?.unit==='개'&&lowKeys.has(stockKey(i.item_name));
-      return `<article class="item-card status-${statusFor(i)}" data-id="${escapeHtml(i.id)}">
-        <button class="item-open" data-edit="${escapeHtml(i.id)}" type="button" ${busy?'disabled':''} aria-label="${escapeHtml(i.item_name)} 수정">
-          <div class="item-top"><div><div class="item-name">${escapeHtml(i.item_name)} ${shortage?'<span class="low-stock-badge">부족</span>':''}</div><div class="item-qty">${escapeHtml(i.quantity)}</div></div><span class="day-badge">${dLabel(i)}</span></div>
+      const expanded=state.expandedId===String(i.id);
+      return `<article class="item-card status-${statusFor(i)} ${expanded?'is-expanded':''}" data-id="${escapeHtml(i.id)}">
+        <button class="item-open" ${state.view==='large'?'data-edit':'data-expand'}="${escapeHtml(i.id)}" ${state.view!=='large'?`aria-expanded="${expanded}"`:''} type="button" ${busy?'disabled':''} aria-label="${escapeHtml(i.item_name)} ${state.view==='large'?'수정':'상세 보기'}">
+          <div class="item-top"><div><div class="item-name"><span class="item-title-text">${escapeHtml(i.item_name)}</span> ${shortage?'<span class="low-stock-badge">부족</span>':''}</div><div class="item-qty">${escapeHtml(i.quantity)}</div></div><span class="day-badge">${dLabel(i)}</span></div>
           <div class="item-meta"><span>📍 ${escapeHtml(i.location)}</span><span>📅 ${escapeHtml(i.expiry_date)}</span><span class="delivery-meta">📦 납입 ${escapeHtml(shortDate(i.delivery_date))}</span>${i.note?`<span class="item-note">📝 ${escapeHtml(i.note)}</span>`:''}</div>
         </button>
+        ${state.view!=='large'?`<button class="item-detail-edit" type="button" data-edit="${escapeHtml(i.id)}" ${busy?'disabled':''}>상세 수정</button>`:''}
         <div class="item-actions">
           <button type="button" data-use-one="${escapeHtml(i.id)}" ${!qty||qty.count<1||busy?'disabled':''}>1${qty?.unit||'개'} 사용</button>
           <button type="button" data-use="${escapeHtml(i.id)}" ${!qty||qty.count<1||busy?'disabled':''}>수량 지정</button>
@@ -428,7 +435,12 @@
     for(const list of ['inventoryList','purchaseList'])$(list).addEventListener('click',e=>{
       const button=e.target.closest('button');
       if(!button||button.disabled)return;
-      if(button.dataset.edit)openEdit(button.dataset.edit);
+      if(button.dataset.expand){
+        const id=button.dataset.expand;
+        state.expandedId=state.expandedId===id?null:id;render();
+        [...$('inventoryList').querySelectorAll('[data-expand]')].find(el=>el.dataset.expand===id)?.focus({preventScroll:true});
+      }
+      else if(button.dataset.edit)openEdit(button.dataset.edit);
       else if(button.dataset.restock)openRestock(button.dataset.restock);
       else if(button.dataset.useOne)useStock(button.dataset.useOne,1);
       else if(button.dataset.use)openUse(button.dataset.use);
@@ -444,6 +456,13 @@
     });
     $('useDialog').addEventListener('cancel',e=>{if($('useSubmit').disabled)e.preventDefault();});
     try { state.sort=localStorage.getItem('inventory-sort')==='name'?'name':'expiry'; } catch(_) {}
+    try { const savedView=localStorage.getItem('inventory-view'); if(['large','small','list'].includes(savedView))state.view=savedView; } catch(_) {}
+    document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>{
+      state.view=button.dataset.view;
+      state.expandedId=null;
+      try { localStorage.setItem('inventory-view',state.view); } catch(_) {}
+      render();
+    }));
     $('sortSelect').value=state.sort;
     $('sortSelect').addEventListener('change',e=>{
       state.sort=e.target.value;
