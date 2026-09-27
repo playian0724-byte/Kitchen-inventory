@@ -111,3 +111,15 @@ h2 { margin-bottom: 0; font-size: 22px; letter-spacing: -.03em; }
 .log-detail { margin-top:4px; font-size:13px; color:#555d55; }
 .log-sub { margin-top:5px; font-size:11px; color:var(--muted); word-break:break-all; }
 @media (max-width:420px) { .date-grid { grid-template-columns:1fr 1fr; } }
+
+/* Large, independent date controls work in Android and installed PWAs. */
+.sort-control { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin:2px 0 12px; color:var(--muted); font-size:13px; }
+.sort-control select { padding:10px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); font:inherit; }
+.date-grid { grid-template-columns:1fr; gap:14px; }
+.date-field { border:0; padding:0; margin:0; min-width:0; }
+.date-field legend { padding:0; margin-bottom:6px; color:#596159; font-size:12px; font-weight:800; }
+.date-selects { display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:8px; }
+.date-selects select { width:100%; min-width:0; min-height:48px; padding:10px 8px; border:1px solid var(--line); border-radius:13px; background:#fafbf8; color:var(--ink); font:inherit; font-size:16px; }
+.date-shortcuts { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.date-shortcuts button { min-height:40px; padding:6px 13px; border:1px solid var(--line); border-radius:10px; background:#eef1ed; color:var(--brand); font-size:13px; }
+.date-selects select:focus-visible, .sort-control select:focus-visible { outline:2px solid #8ca193; outline-offset:2px; }

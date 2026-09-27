@@ -66,6 +66,9 @@
           <button class="filter-chip" data-filter="30" type="button">30일 이내</button>
           <button class="filter-chip" data-filter="expired" type="button">만료</button>
         </section>
+        <label class="sort-control">정렬
+          <select id="sortSelect"><option value="expiry">유통기한 임박순</option><option value="name">품목명순 (ㄱㄴㄷ)</option></select>
+        </label>
         <section id="inventoryList" class="inventory-list" aria-live="polite"></section>
         <section id="emptyState" class="empty-state hidden"><div class="empty-icon">📦</div><h2>표시할 재고가 없습니다</h2><p>오른쪽 아래 + 버튼으로 첫 재고를 등록하세요.</p></section>
       </div>
@@ -93,16 +96,13 @@
           <input id="quantity" required type="number" inputmode="numeric" min="0" step="1" value="1" aria-label="수량" />
           <button id="quantityPlus" class="quantity-step" type="button" aria-label="수량 1 증가">＋</button>
           <select id="quantityUnit" class="quantity-unit" aria-label="단위">
-            <option value="개">개</option>
+            <option value="개" selected>개</option>
             <option value="박스">박스</option>
           </select>
         </div>
       </label>
       <label class="autocomplete-field">위치<input id="location" required maxlength="80" placeholder="예: 냉동고 2번 / 건식창고 1단" autocomplete="off" /><div id="locationSuggestions" class="autocomplete-list hidden"></div></label>
-      <div class="date-grid">
-        <label>납입일<input id="deliveryDate" required type="date" /></label>
-        <label>유통기한<input id="expiryDate" required type="date" /></label>
-      </div>
+      <div class="date-grid"><fieldset class="date-field"><legend>납입일</legend><input id="deliveryDate" type="hidden" /><div class="date-selects"><select id="deliveryDateYear" aria-label="납입일 연도" required></select><select id="deliveryDateMonth" aria-label="납입일 월" required></select><select id="deliveryDateDay" aria-label="납입일 일" required></select></div><div class="date-shortcuts"><button type="button" data-date-target="deliveryDate" data-days="0">오늘</button><button type="button" data-date-target="deliveryDate" data-days="-1">어제</button></div></fieldset><fieldset class="date-field"><legend>유통기한</legend><input id="expiryDate" type="hidden" /><div class="date-selects"><select id="expiryDateYear" aria-label="유통기한 연도" required></select><select id="expiryDateMonth" aria-label="유통기한 월" required></select><select id="expiryDateDay" aria-label="유통기한 일" required></select></div><div class="date-shortcuts"><button type="button" data-date-target="expiryDate" data-days="0">오늘</button><button type="button" data-date-target="expiryDate" data-days="7">+7일</button><button type="button" data-date-target="expiryDate" data-days="30">+30일</button><button type="button" data-date-target="expiryDate" data-days="90">+90일</button></div></fieldset></div>
       <label>메모<textarea id="note" rows="3" maxlength="300" placeholder="선입선출, 개봉 여부 등"></textarea></label>
       <div class="sheet-actions"><button id="deleteButton" class="danger-btn hidden" type="button">삭제</button><button class="primary-btn" type="submit">저장</button></div>
     </form>

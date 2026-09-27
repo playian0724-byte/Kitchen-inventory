@@ -3,25 +3,25 @@
   const config = window.APP_CONFIG || {};
   const cloudReady = Boolean(config.SUPABASE_URL && config.SUPABASE_KEY && window.supabase);
   const client = cloudReady ? window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_KEY) : null;
-  const state = { items: [], logs: [], filter: 'all', search: '', logSearch: '', session: null, page: 'inventory', channel: null };
+  const state = { items: [], logs: [], filter: 'all', sort: 'expiry', search: '', logSearch: '', session: null, page: 'inventory', channel: null };
 
-  function addDays(days){ const d=new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+  function addDays(days){ const d=new Date(`${todayKST()}T00:00:00Z`); d.setUTCDate(d.getUTCDate()+days); return d.toISOString().slice(0,10); }
   function todayKST(){ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
-  function daysLeft(s){ if(!s)return 99999; const t=new Date(); t.setHours(0,0,0,0); return Math.ceil((new Date(`${s}T00:00:00`)-t)/86400000); }
+  function daysLeft(s){ if(!s)return 99999; return Math.round((Date.parse(`${s}T00:00:00Z`)-Date.parse(`${todayKST()}T00:00:00Z`))/86400000); }
   function statusFor(i){ const d=daysLeft(i.expiry_date); return d<0?'expired':d<=7?'urgent':d<=30?'warning':'normal'; }
   function dLabel(i){ const d=daysLeft(i.expiry_date); return d<0?`D+${Math.abs(d)}`:d===0?'D-DAY':`D-${d}`; }
   function escapeHtml(v=''){ return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
   function shortDate(s){ return s ? s.slice(5).replace('-','.') : '-'; }
   function parseQuantity(raw=''){
     const s=String(raw||'').trim();
-    const m=s.match(/^(\d+)\s*(ê°|ë°ì¤)$/);
+    const m=s.match(/^(\d+)\s*(개|박스)$/);
     if(m)return {count:Number(m[1]),unit:m[2]};
     const n=parseInt(s,10);
-    return {count:Number.isFinite(n)?n:1,unit:s.includes('ë°ì¤')?'ë°ì¤':'ê°'};
+    return {count:Number.isFinite(n)?n:1,unit:s.includes('박스')?'박스':'개'};
   }
   function setQuantity(count,unit){
     $('quantity').value=Math.max(0,Number.isFinite(Number(count))?Math.floor(Number(count)):1);
-    $('quantityUnit').value=unit==='ë°ì¤'?'ë°ì¤':'ê°';
+    $('quantityUnit').value=unit==='박스'?'박스':'개';
   }
   function stepQuantity(delta){
     const current=Math.max(0,parseInt($('quantity').value,10)||0);
@@ -109,7 +109,9 @@
     document.querySelectorAll('.nav-tab').forEach(x=>x.classList.toggle('active',x.dataset.page===state.page));
     if(!inv){ renderLogs(); return; }
 
-    const sorted=[...state.items].sort((a,b)=>String(a.expiry_date).localeCompare(String(b.expiry_date)));
+    const byName=(a,b)=>String(a.item_name||'').localeCompare(String(b.item_name||''),'ko',{numeric:true});
+    const byExpiry=(a,b)=>String(a.expiry_date||'9999-12-31').localeCompare(String(b.expiry_date||'9999-12-31'));
+    const sorted=[...state.items].sort((a,b)=>state.sort==='name' ? byName(a,b)||byExpiry(a,b) : byExpiry(a,b)||byName(a,b));
     $('countAll').textContent=sorted.length;
     $('countExpired').textContent=sorted.filter(i=>daysLeft(i.expiry_date)<0).length;
     $('count7').textContent=sorted.filter(i=>daysLeft(i.expiry_date)>=0&&daysLeft(i.expiry_date)<=7).length;
@@ -175,10 +177,10 @@
     $('dialogTitle').textContent='\uC7AC\uACE0 \uCD94\uAC00';
     $('itemId').value='';
     $('itemName').value='';
-    setQuantity(1,'ê°');
+    setQuantity(1,'개');
     $('location').value='';
-    $('deliveryDate').value=todayKST();
-    $('expiryDate').value=addDays(30);
+    setDateField('deliveryDate',todayKST());
+    setDateField('expiryDate',addDays(30));
     $('note').value='';
     $('deleteButton').classList.add('hidden');
     $('itemDialog').showModal();
@@ -193,8 +195,8 @@
     const qty=parseQuantity(i.quantity);
     setQuantity(qty.count,qty.unit);
     $('location').value=i.location;
-    $('deliveryDate').value=i.delivery_date||todayKST();
-    $('expiryDate').value=i.expiry_date;
+    setDateField('deliveryDate',i.delivery_date||todayKST());
+    setDateField('expiryDate',i.expiry_date);
     $('note').value=i.note||'';
     $('deleteButton').classList.remove('hidden');
     $('itemDialog').showModal();
@@ -297,7 +299,40 @@
     }
   }
 
+  function setDateField(id,value){
+    const [year,month,day]=(value||todayKST()).split('-').map(Number);
+    const y=$(id+'Year'), m=$(id+'Month'), d=$(id+'Day');
+    if(![...y.options].some(o=>Number(o.value)===year))y.add(new Option(`${year}년`,year));
+    y.value=year; m.value=month;
+    const maxDay=new Date(Date.UTC(year,month,0)).getUTCDate();
+    d.replaceChildren(...Array.from({length:maxDay},(_,i)=>new Option(`${i+1}일`,i+1)));
+    d.value=Math.min(day,maxDay);
+    $(id).value=`${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-${String(d.value).padStart(2,'0')}`;
+  }
+  function bindDateFields(){
+    for(const id of ['deliveryDate','expiryDate']){
+      const year=Number(todayKST().slice(0,4));
+      $(id+'Year').replaceChildren(...Array.from({length:31},(_,i)=>new Option(`${year-10+i}년`,year-10+i)));
+      $(id+'Month').replaceChildren(...Array.from({length:12},(_,i)=>new Option(`${i+1}월`,i+1)));
+      setDateField(id,todayKST());
+      for(const part of ['Year','Month','Day'])$(id+part).addEventListener('change',()=>{
+        setDateField(id,`${$(id+'Year').value}-${$(id+'Month').value}-${$(id+'Day').value}`);
+      });
+    }
+    document.querySelectorAll('[data-date-target]').forEach(button=>button.addEventListener('click',()=>{
+      setDateField(button.dataset.dateTarget,addDays(Number(button.dataset.days)));
+    }));
+  }
+
   function bindEvents(){
+    bindDateFields();
+    try { state.sort=localStorage.getItem('inventory-sort')==='name'?'name':'expiry'; } catch(_) {}
+    $('sortSelect').value=state.sort;
+    $('sortSelect').addEventListener('change',e=>{
+      state.sort=e.target.value;
+      try { localStorage.setItem('inventory-sort',state.sort); } catch(_) {}
+      render();
+    });
     bindAutocomplete('itemName','itemNameSuggestions','item_name');
     bindAutocomplete('location','locationSuggestions','location');
     $('quantityMinus').addEventListener('click',()=>stepQuantity(-1));

@@ -50,6 +50,7 @@ export default async function handler(req, res) {
     const [ty, tm, td] = todayString.split('-').map(Number);
     const today = Date.UTC(ty, tm - 1, td);
 
+    const milestones = {30: 0, 20: 0, 10: 0};
     let urgent = 0;
     let expired = 0;
 
@@ -64,6 +65,8 @@ export default async function handler(req, res) {
         `• ${item.item_name}: ${item.expiry_date} / D${diff >= 0 ? '-' + diff : '+' + Math.abs(diff)}`
       );
 
+      if (Object.hasOwn(milestones, diff)) milestones[diff]++;
+
       if (diff < 0) {
         expired++;
       } else if (diff <= 7) {
@@ -74,12 +77,13 @@ export default async function handler(req, res) {
     console.log(`🟠 D-7 이내: ${urgent}개`);
     console.log(`🔴 만료: ${expired}개`);
 
-    if (urgent === 0 && expired === 0) {
+    if (urgent === 0 && expired === 0 && Object.values(milestones).every(count => count === 0)) {
       console.log('ℹ️ 알림 대상 없음 → 발송하지 않음');
 
       return res.status(200).json({
         ok: true,
         inventory: items?.length || 0,
+        milestones,
         urgent,
         expired,
         subscriptions: 0,
@@ -104,7 +108,11 @@ export default async function handler(req, res) {
 
     const payload = JSON.stringify({
       title: '⚠️ 취사장 유통기한 확인',
-      body: `임박 ${urgent}건 · 만료 ${expired}건\n앱을 열어 재고를 확인하세요.`,
+      body: [
+        ...[30,20,10].filter(day => milestones[day]).map(day => `${day}일 전 ${milestones[day]}건`),
+        urgent ? `7일 이내 ${urgent}건` : '',
+        expired ? `만료 ${expired}건` : ''
+      ].filter(Boolean).join(' · ') + '\n앱을 열어 재고를 확인하세요.',
       url: '/'
     });
 
@@ -152,6 +160,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       inventory: items?.length || 0,
+      milestones,
       urgent,
       expired,
       subscriptions: subs?.length || 0,
